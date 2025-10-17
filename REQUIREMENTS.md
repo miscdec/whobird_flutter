@@ -65,6 +65,7 @@ These requirements are mandatory and are based on the project's official develop
 - **NFR7: Testability:** All business logic (use cases) and data repository implementations **must** be covered by unit tests. Key UI components and user flows **must** be covered by widget tests.
 - **NFR8: Documentation:** All public classes, methods, and fields **must** have clear and concise `///` doc comments.
 - **NFR9: Simplicity and Clarity:** Code should be simple, clear, and readable. Over-engineered abstractions and "magic" frameworks are to be avoided in favor of explicit logic.
+- **NFR10: ML Engine Flexibility:** The architecture **must** abstract the machine learning inference engine. The core application logic should not be tightly coupled to a specific TFLite plugin. This ensures that alternative engines (which support `.tflite` or converted formats) can be integrated in the future without requiring a major refactor.
 
 ## 4. Proposed Technology Stack
 
@@ -73,7 +74,7 @@ These requirements are mandatory and are based on the project's official develop
 - **Architecture:** Clean Architecture
 - **State Management:** To be determined, but must support unidirectional data flow and immutability (e.g., `flutter_bloc`, `Riverpod`).
 - **Dependency Injection:** `get_it`
-- **Machine Learning:** `tflite_flutter` and `tflite_flutter_helper`
+- **Machine Learning:** An abstracted TFLite-compatible engine. The initial implementation may use `tflite_flutter`, but the architecture must allow for alternatives.
 - **Local Database:** `drift` (formerly Moor) or `sqflite`
 - **Audio Recording:** `mic_stream` or a similar plugin.
 - **HTTP Client:** `http` or `dio`

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:whobird_flutter/core/providers.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:whobird_flutter/presentation/bloc/history/history_bloc.dart';
 
-class HistoryScreen extends ConsumerWidget {
+class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final historyAsyncValue = ref.watch(historyNotifierProvider);
-
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Observation History'),
@@ -16,6 +14,7 @@ class HistoryScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             onPressed: () {
+              // Show a confirmation dialog before clearing
               showDialog(
                 context: context,
                 builder: (BuildContext dialogContext) {
@@ -25,12 +24,14 @@ class HistoryScreen extends ConsumerWidget {
                     actions: <Widget>[
                       TextButton(
                         child: const Text('Cancel'),
-                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
                       ),
                       TextButton(
                         child: const Text('Clear'),
                         onPressed: () {
-                          ref.read(historyNotifierProvider.notifier).clearHistory();
+                          context.read<HistoryBloc>().add(ClearHistory());
                           Navigator.of(dialogContext).pop();
                         },
                       ),
@@ -42,27 +43,32 @@ class HistoryScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: historyAsyncValue.when(
-        data: (observations) {
-          if (observations.isEmpty) {
+      body: BlocBuilder<HistoryBloc, HistoryState>(
+        builder: (context, state) {
+          if (state is HistoryLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is HistoryLoaded) {
+            return ListView.builder(
+              itemCount: state.observations.length,
+              itemBuilder: (context, index) {
+                final observation = state.observations[index];
+                return ListTile(
+                  title: Text(observation.commonName),
+                  subtitle: Text(
+                      '${observation.scientificName}\n${observation.timestamp.toIso8601String()}'),
+                  trailing: Text('${(observation.confidence * 100).toStringAsFixed(1)}%'),
+                  isThreeLine: true,
+                );
+              },
+            );
+          } else if (state is HistoryEmpty) {
             return const Center(child: Text('No observations yet.'));
+          } else if (state is HistoryFailure) {
+            return Center(child: Text('Failed to load history: ${state.message}'));
           }
-          return ListView.builder(
-            itemCount: observations.length,
-            itemBuilder: (context, index) {
-              final observation = observations[index];
-              return ListTile(
-                title: Text(observation.commonName),
-                subtitle: Text(
-                    '${observation.scientificName}\n${observation.timestamp.toIso8601String()}'),
-                trailing: Text('${(observation.confidence * 100).toStringAsFixed(1)}%'),
-                isThreeLine: true,
-              );
-            },
-          );
+          // The initial state will trigger the LoadHistory event in main.dart
+          return const Center(child: CircularProgressIndicator());
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Failed to load history: $err')),
       ),
     );
   }

@@ -18,17 +18,20 @@ class StartRealTimeAnalysis implements UseCase<Stream<List<Classification>>, NoP
   });
 
   @override
-  Future<Stream<List<Classification>>> call(NoParams params) async* {
+  Future<Stream<List<Classification>>> call(NoParams params) async {
     final bool permissionsGranted = await permissionRepository.requestPermissions();
     if (!permissionsGranted) {
-      // If permissions are not granted, we can throw a specific failure
-      // or return an empty stream with an error.
       throw PermissionFailure(message: 'Microphone and location permissions are required.');
     }
 
-    await audioRepository.startRecording();
-    yield* audioRepository.audioStream.asyncExpand((audioChunk) {
-      return Stream.fromFuture(classificationRepository.classifyAudio(audioChunk));
+    final bool recordingStarted = await audioRepository.startRecording();
+    if (!recordingStarted) {
+      // This could be a specific failure for audio focus.
+      throw PermissionFailure(message: 'Could not get audio focus.');
+    }
+
+    return audioRepository.audioChunkStream.asyncMap((audioChunk) {
+      return classificationRepository.classifyAudio(audioChunk);
     });
   }
 }

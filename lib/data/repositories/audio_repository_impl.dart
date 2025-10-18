@@ -13,7 +13,7 @@ class AudioRepositoryImpl implements AudioRepository {
   });
 
   @override
-  Stream<AudioChunk> get audioStream => audioService.audioStream;
+  Stream<AudioChunk> get audioChunkStream => audioService.audioChunkStream;
 
   @override
   Future<bool> startRecording() async {

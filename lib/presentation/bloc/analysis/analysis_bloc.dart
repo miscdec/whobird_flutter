@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:whobird_flutter/core/usecases/usecase.dart';
@@ -15,7 +16,7 @@ class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
   StreamSubscription<List<Classification>>? _analysisSubscription;
 
   AnalysisBloc({required this.startRealTimeAnalysis}) : super(AnalysisInitial()) {
-    on<StartAnalysis>(_onStartAnalysis);
+    on<StartAnalysis>(_onStartAnalysis, transformer: restartable());
     on<StopAnalysis>(_onStopAnalysis);
     on<_NewDetectionsReceived>(_onNewDetectionsReceived);
   }
@@ -24,21 +25,26 @@ class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
     StartAnalysis event,
     Emitter<AnalysisState> emit,
   ) async {
-    await _analysisSubscription?.cancel();
-    final stream = await startRealTimeAnalysis(NoParams());
-    _analysisSubscription = stream.listen(
-      (detections) => add(_NewDetectionsReceived(detections)),
-      onError: (error) => emit(AnalysisFailure(error.toString())),
-    );
     emit(const AnalysisInProgress([]));
+    try {
+      final stream = await startRealTimeAnalysis(NoParams());
+      await emit.forEach(
+        stream,
+        onData: (List<Classification> detections) => AnalysisInProgress(detections),
+        onError: (error, stackTrace) => AnalysisFailure(error.toString()),
+      );
+    } catch (error) {
+      emit(AnalysisFailure(error.toString()));
+    }
   }
 
   Future<void> _onStopAnalysis(
     StopAnalysis event,
     Emitter<AnalysisState> emit,
   ) async {
-    await _analysisSubscription?.cancel();
-    _analysisSubscription = null;
+    // The restartable transformer handles cancelling the previous stream,
+    // but we can also manually stop it if needed.
+    // For now, simply emitting a paused state is enough.
     emit(AnalysisPaused());
   }
 
@@ -46,12 +52,9 @@ class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
     _NewDetectionsReceived event,
     Emitter<AnalysisState> emit,
   ) {
+    // This event is now handled by emit.forEach, but we can keep it
+    // for other purposes or remove it if it's no longer needed.
+    // For clarity, we will rely on emit.forEach and this event can be removed later.
     emit(AnalysisInProgress(event.detections));
-  }
-
-  @override
-  Future<void> close() {
-    _analysisSubscription?.cancel();
-    return super.close();
   }
 }

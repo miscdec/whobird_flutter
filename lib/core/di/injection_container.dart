@@ -5,6 +5,7 @@ import 'package:whobird_flutter/data/datasources/location_service.dart';
 import 'package:whobird_flutter/data/datasources/ml_service.dart';
 import 'package:whobird_flutter/data/datasources/persistence_service.dart';
 import 'package:whobird_flutter/data/datasources/remote_data_service.dart';
+import 'package:whobird_flutter/data/datasources/spectrogram_service.dart';
 import 'package:whobird_flutter/data/repositories/audio_repository_impl.dart';
 import 'package:whobird_flutter/data/repositories/classification_repository_impl.dart';
 import 'package:whobird_flutter/data/repositories/model_repository_impl.dart';
@@ -48,7 +49,7 @@ Future<void> init() async {
   // Repositories
   sl.registerLazySingleton<PermissionRepository>(() => PermissionRepositoryImpl());
   sl.registerLazySingleton<ModelRepository>(() => ModelRepositoryImpl(remoteDataService: sl()));
-  sl.registerLazySingleton<ClassificationRepository>(() => ClassificationRepositoryImpl(mlService: sl(), locationService: sl()));
+  sl.registerLazySingleton<ClassificationRepository>(() => ClassificationRepositoryImpl(mlService: sl(), locationService: sl(), spectrogramService: sl()));
   sl.registerLazySingleton<AudioRepository>(() => AudioRepositoryImpl(audioService: sl()));
   sl.registerLazySingleton<ObservationHistoryRepository>(() => ObservationHistoryRepositoryImpl(persistenceService: sl()));
   sl.registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl());
@@ -59,6 +60,7 @@ Future<void> init() async {
   sl.registerLazySingleton<LocationService>(() => GeolocatorService());
   sl.registerLazySingleton<PersistenceService>(() => DriftPersistenceService());
   sl.registerLazySingleton<RemoteDataService>(() => HttpModelDownloadService(client: sl()));
+  sl.registerLazySingleton<SpectrogramService>(() => SpectrogramServiceImpl());
 
   // External
   sl.registerLazySingleton(() => http.Client());

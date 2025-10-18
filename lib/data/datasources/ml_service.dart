@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:whobird_flutter/core/constants/constants.dart';
 import 'package:whobird_flutter/domain/entities/classification.dart';
-import 'package:whobird_flutter/domain/entities/audio_chunk.dart';
 
 /// Abstract interface for a machine learning inference service.
 abstract class MLService {
-  Future<List<Classification>> runInference(AudioChunk audioChunk);
+  /// Runs inference on a pre-processed [spectrogram].
+  Future<List<Classification>> runInference(Float32List spectrogram);
   Future<void> loadModels();
 }
 
@@ -44,39 +45,32 @@ class TfLiteService implements MLService {
   }
 
   @override
-  Future<List<Classification>> runInference(AudioChunk audioChunk) async {
+  Future<List<Classification>> runInference(Float32List spectrogram) async {
     if (_interpreter == null || _metaInterpreter == null || _labels.isEmpty) {
       await loadModels();
     }
 
-    // 1. Define input and output shapes based on the model.
-    // This is based on the original whoBIRD app's SoundClassifier.kt
     final outputShape = [1, _labels.length];
     final output = List.filled(outputShape.reduce((a, b) => a * b), 0.0)
         .reshape(outputShape);
 
-    // Assuming audioChunk buffer is already the correct size (144000 for 3s at 48kHz)
-    final input = audioChunk.buffer.reshape([1, audioChunk.buffer.length]);
+    // The input is now the spectrogram
+    final input = spectrogram.reshape([1, spectrogram.length]);
 
     try {
-      // 2. Run inference
       _interpreter!.run(input, output);
 
-      // 3. Post-processing
       final List<Classification> results = [];
       final outputList = output[0] as List<double>;
 
       for (int i = 0; i < outputList.length; i++) {
-        // Apply sigmoid function to convert logits to probabilities
         final score = 1 / (1 + exp(-outputList[i]));
-        if (score > 0.01) { // A threshold to avoid adding too many low-confidence results
+        if (score > 0.01) {
           results.add(Classification(label: _labels[i], score: score));
         }
       }
 
-      // Sort by score descending
       results.sort((a, b) => b.score.compareTo(a.score));
-
       return results;
     } catch (e) {
       print("Failed to run inference: $e");

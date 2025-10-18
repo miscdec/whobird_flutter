@@ -48,10 +48,10 @@ Future<void> init() async {
   // Repositories
   sl.registerLazySingleton<PermissionRepository>(() => PermissionRepositoryImpl());
   sl.registerLazySingleton<ModelRepository>(() => ModelRepositoryImpl(remoteDataService: sl()));
-  sl.registerLazySingleton<ClassificationRepository>(() => ClassificationRepositoryImpl(mlService: sl()));
+  sl.registerLazySingleton<ClassificationRepository>(() => ClassificationRepositoryImpl(mlService: sl(), locationService: sl()));
   sl.registerLazySingleton<AudioRepository>(() => AudioRepositoryImpl(audioService: sl()));
   sl.registerLazySingleton<ObservationHistoryRepository>(() => ObservationHistoryRepositoryImpl(persistenceService: sl()));
-  sl.registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl()); // Placeholder for now
+  sl.registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl());
 
   // Data Sources
   sl.registerLazySingleton<MLService>(() => TfLiteService());

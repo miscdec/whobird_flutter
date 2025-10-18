@@ -12,16 +12,14 @@ dependencies:
     sdk: flutter
 
   # Core & Utilities
-  get_it: ^7.6.0
   permission_handler: ^11.0.0
   path_provider: ^2.1.1
   http: ^1.1.0
   shared_preferences: ^2.2.2
 
-  # Presentation (BLoC)
-  flutter_bloc: ^8.1.3
+  # Presentation (Riverpod)
+  flutter_riverpod: ^2.4.9
   equatable: ^2.0.5
-  bloc_concurrency: ^0.2.2
 
   # Data
   drift: ^2.11.0
@@ -38,7 +36,6 @@ dev_dependencies:
   flutter_lints: ^2.0.0
   drift_dev: ^2.11.0
   build_runner: ^2.4.6
-  bloc_test: ^9.1.4
   mocktail: ^1.0.0
 
 flutter:

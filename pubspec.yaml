@@ -28,7 +28,7 @@ dependencies:
   tflite_flutter: ^0.11.0 # Check for latest compatible version
   mic_stream: ^0.7.3-dev # Check for latest compatible version and null safety
   geolocator: ^10.1.0
-  fft: ^2.0.2
+  scidart: ^1.0.1
 
 dev_dependencies:
   flutter_test:

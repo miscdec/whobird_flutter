@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:mic_stream/mic_stream.dart';
+import 'package:record/record.dart';
 import 'package:whobird_flutter/domain/entities/audio_chunk.dart';
 
 /// Abstract interface for a service that provides an audio stream.
@@ -10,9 +10,9 @@ abstract class AudioService {
   Future<void> stopRecording();
 }
 
-/// An implementation of AudioService that uses the `mic_stream` package.
-class MicStreamAudioService implements AudioService {
-  StreamSubscription<Uint8List>? _micSubscription;
+/// An implementation of AudioService that uses the `record` package.
+class RecordAudioService implements AudioService {
+  final AudioRecorder _audioRecorder = AudioRecorder();
   StreamController<AudioChunk>? _audioChunkController;
 
   final List<int> _buffer = [];
@@ -26,32 +26,40 @@ class MicStreamAudioService implements AudioService {
 
   @override
   Future<void> startRecording() async {
-    // If the subscription is already active, do nothing.
-    if (_micSubscription != null) return;
+    if (await _audioRecorder.isRecording()) {
+      return;
+    }
 
-    final stream = await MicStream.microphone(
-      audioSource: AudioSource.DEFAULT,
+    const recorderConfig = RecordConfig(
+      encoder: AudioEncoder.pcm16bits,
       sampleRate: 48000,
-      channelConfig: ChannelConfig.CHANNEL_IN_MONO,
-      audioFormat: AudioFormat.ENCODING_PCM_16BIT,
+      numChannels: 1,
     );
 
-    _micSubscription = stream.listen((samples) {
-      _buffer.addAll(samples);
-      if (_buffer.length >= _chunkSizeBytes) {
-        final chunkData = Uint8List.fromList(_buffer.sublist(0, _chunkSizeBytes));
-        _buffer.removeRange(0, _chunkSizeBytes);
+    final stream = await _audioRecorder.startStream(recorderConfig);
 
-        final floatBuffer = _convertPcm16ToFloat32(chunkData);
-        _audioChunkController?.add(AudioChunk(buffer: floatBuffer));
-      }
-    });
+    stream.listen(
+      (data) {
+        _buffer.addAll(data);
+        if (_buffer.length >= _chunkSizeBytes) {
+          final chunkData = Uint8List.fromList(_buffer.sublist(0, _chunkSizeBytes));
+          _buffer.removeRange(0, _chunkSizeBytes);
+
+          final floatBuffer = _convertPcm16ToFloat32(chunkData);
+          _audioChunkController?.add(AudioChunk(buffer: floatBuffer));
+        }
+      },
+      // TODO: Add proper error handling
+      onError: (error) => print('AudioStream Error: $error'),
+      onDone: () => print('AudioStream Done'),
+    );
   }
 
   @override
   Future<void> stopRecording() async {
-    await _micSubscription?.cancel();
-    _micSubscription = null;
+    if (await _audioRecorder.isRecording()) {
+      await _audioRecorder.stop();
+    }
     _buffer.clear();
   }
 

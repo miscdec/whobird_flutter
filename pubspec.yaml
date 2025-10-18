@@ -27,7 +27,7 @@ dependencies:
   drift: ^2.11.0
   sqlite3_flutter_libs: ^0.5.15
   tflite_flutter: ^0.10.1
-  mic_stream: ^0.6.0
+  record: ^5.0.4
   geolocator: ^10.1.0
   scidart: ^1.0.1
 

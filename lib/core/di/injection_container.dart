@@ -9,11 +9,13 @@ import 'package:whobird_flutter/data/repositories/audio_repository_impl.dart';
 import 'package:whobird_flutter/data/repositories/classification_repository_impl.dart';
 import 'package:whobird_flutter/data/repositories/model_repository_impl.dart';
 import 'package:whobird_flutter/data/repositories/observation_history_repository_impl.dart';
+import 'package:whobird_flutter/data/repositories/permission_repository_impl.dart';
 import 'package:whobird_flutter/data/repositories/settings_repository_impl.dart';
 import 'package:whobird_flutter/domain/repositories/audio_repository.dart';
 import 'package:whobird_flutter/domain/repositories/classification_repository.dart';
 import 'package:whobird_flutter/domain/repositories/model_repository.dart';
 import 'package:whobird_flutter/domain/repositories/observation_history_repository.dart';
+import 'package:whobird_flutter/domain/repositories/permission_repository.dart';
 import 'package:whobird_flutter/domain/repositories/settings_repository.dart';
 import 'package:whobird_flutter/domain/usecases/clear_observation_history.dart';
 import 'package:whobird_flutter/domain/usecases/get_observation_history.dart';
@@ -36,7 +38,7 @@ Future<void> init() async {
 
   // Use Cases
   sl.registerLazySingleton(() => SetupApplicationUseCase(modelRepository: sl()));
-  sl.registerLazySingleton(() => StartRealTimeAnalysis(audioRepository: sl(), classificationRepository: sl()));
+  sl.registerLazySingleton(() => StartRealTimeAnalysis(audioRepository: sl(), classificationRepository: sl(), permissionRepository: sl()));
   sl.registerLazySingleton(() => GetObservationHistory(sl()));
   sl.registerLazySingleton(() => ClearObservationHistory(sl()));
   sl.registerLazySingleton(() => SaveDetection(sl()));
@@ -44,6 +46,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => SaveSettings(sl()));
 
   // Repositories
+  sl.registerLazySingleton<PermissionRepository>(() => PermissionRepositoryImpl());
   sl.registerLazySingleton<ModelRepository>(() => ModelRepositoryImpl(remoteDataService: sl()));
   sl.registerLazySingleton<ClassificationRepository>(() => ClassificationRepositoryImpl(mlService: sl()));
   sl.registerLazySingleton<AudioRepository>(() => AudioRepositoryImpl(audioService: sl()));

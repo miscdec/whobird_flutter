@@ -27,17 +27,14 @@ class StartRealTimeAnalysis implements UseCase<Stream<List<Classification>>, NoP
       throw PermissionFailure(message: 'Microphone and location permissions are required.');
     }
 
-    await audioRepository.startRecording();
-    final stream = audioRepository.audioStream.asyncExpand((audioChunk) {
-      return Stream.fromFuture(classificationRepository.classifyAudio(audioChunk));
-    });
-    stream.listen((classification) {
-      print(classification);
-    });
-    stream.handleError((error) {
-      print("Error in analysis stream: $error");
-    });
-    return stream;
-  }
+    final bool recordingStarted = await audioRepository.startRecording();
+    if (!recordingStarted) {
+      // This could be a specific failure for audio focus.
+      throw PermissionFailure(message: 'Could not get audio focus.');
+    }
 
+    return audioRepository.audioStream.asyncMap((audioChunk) {
+      return classificationRepository.classifyAudio(audioChunk);
+    });
+  }
 }

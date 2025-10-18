@@ -16,6 +16,7 @@ dependencies:
   permission_handler: ^11.0.0
   path_provider: ^2.1.1
   http: ^1.1.0
+  shared_preferences: ^2.2.2
 
   # Presentation (BLoC)
   flutter_bloc: ^8.1.3

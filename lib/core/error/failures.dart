@@ -17,6 +17,15 @@ class ServerFailure extends Failure {
   List<Object> get props => [message];
 }
 
+class ModelLoadFailure extends Failure {
+  final String message;
+
+  const ModelLoadFailure({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
+
 class CacheFailure extends Failure {
   final String message;
 

@@ -14,16 +14,20 @@ abstract class AudioService {
 class MicStreamAudioService implements AudioService {
   Stream<Uint8List>? _stream;
   StreamSubscription<Uint8List>? _listener;
-
   final _audioChunkController = StreamController<AudioChunk>();
+
+  // A buffer to hold audio data until we have a full 3-second chunk
+  final List<int> _buffer = [];
+  // 3 seconds * 48000 samples/sec * 2 bytes/sample (16-bit) = 288000 bytes
+  static const int _chunkSizeBytes = 288000;
 
   @override
   Stream<AudioChunk> get audioStream => _audioChunkController.stream;
 
   @override
   Future<void> startRecording() async {
-    // Note: Error handling and permission checks should be added here
-    // or in a higher-level repository that uses this service.
+    await stopRecording(); // Ensure any previous stream is stopped.
+
     _stream = await MicStream.microphone(
       audioSource: AudioSource.DEFAULT,
       sampleRate: 48000,
@@ -32,16 +36,16 @@ class MicStreamAudioService implements AudioService {
     );
 
     _listener = _stream!.listen((samples) {
-      // The mic_stream provides Uint8List, but our model expects Float32List.
-      // The conversion and normalization logic will happen here or in the repo.
-      // For now, we'll just pass a placeholder. This is a complex step
-      // that depends on the exact model input requirements.
-      final floatBuffer = Float32List(samples.lengthInBytes ~/ 2);
-      // for (var i = 0; i < floatBuffer.length; i++) {
-      //   var int16 = samples.buffer.asByteData().getInt16(i * 2, Endian.little);
-      //   floatBuffer[i] = int16 / 32768.0;
-      // }
-      _audioChunkController.add(AudioChunk(buffer: floatBuffer));
+      _buffer.addAll(samples);
+      // When the buffer has enough data for a full chunk, process and emit it.
+      if (_buffer.length >= _chunkSizeBytes) {
+        final chunkData = Uint8List.fromList(_buffer.sublist(0, _chunkSizeBytes));
+        _buffer.removeRange(0, _chunkSizeBytes); // Keep the buffer clean
+
+        // Convert Uint8List (16-bit PCM) to Float32List (-1.0 to 1.0)
+        final floatBuffer = _convertPcm16ToFloat32(chunkData);
+        _audioChunkController.add(AudioChunk(buffer: floatBuffer));
+      }
     });
   }
 
@@ -50,8 +54,18 @@ class MicStreamAudioService implements AudioService {
     await _listener?.cancel();
     _listener = null;
     _stream = null;
-    if (!_audioChunkController.isClosed) {
-      await _audioChunkController.close();
+    _buffer.clear();
+  }
+
+  Float32List _convertPcm16ToFloat32(Uint8List pcm16) {
+    final byteData = pcm16.buffer.asByteData();
+    final float32List = Float32List(byteData.lengthInBytes ~/ 2);
+    for (var i = 0; i < float32List.length; i++) {
+      // Read two bytes as a 16-bit signed integer (little-endian)
+      final int16 = byteData.getInt16(i * 2, Endian.little);
+      // Normalize to the range -1.0 to 1.0
+      float32List[i] = int16 / 32768.0;
     }
+    return float32List;
   }
 }

@@ -39,9 +39,13 @@ class _AppInitializerState extends State<AppInitializer> {
         if (snapshot.connectionState == ConnectionState.done) {
           if (snapshot.hasError) {
             // Handle setup error: show an error screen
-            return const MaterialApp(
+            return MaterialApp(
               home: Scaffold(
-                body: Center(child: Text('Failed to initialize the app.')),
+                body: Center(child: Text(''
+                    'Failed to initialize the app.'
+                    'Please try again later.'
+                    'Error: ${snapshot.error.toString()}'
+                )),
               ),
             );
           }

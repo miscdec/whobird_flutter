@@ -18,6 +18,12 @@ import 'package:whobird_flutter/domain/entities/audio_chunk.dart';
 class TestableMicStreamAudioService extends MicStreamAudioService {
   final StreamController<Uint8List> testStreamController = StreamController();
 
+  final List<int> _buffer = [];
+  final int _chunkSize = 1024;
+  late Stream<Uint8List>? _stream;
+  late StreamSubscription<Uint8List>? _listener;
+  final StreamController<AudioChunk> _audioChunkController = StreamController();
+
   @override
   Future<void> startRecording() async {
     // Override to use our test controller instead of the real microphone

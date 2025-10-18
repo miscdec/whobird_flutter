@@ -9,7 +9,7 @@ import 'package:whobird_flutter/domain/entities/bird_observation.dart' as domain
 part 'persistence_service.g.dart';
 
 // --- 1. Define Table Structure ---
-@DataClassName('BirdObservation')
+@DataClassName('BirdObservationTable')
 class BirdObservations extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get commonName => text()();

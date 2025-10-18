@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:whobird_flutter/core/error/failures.dart';
 import 'package:whobird_flutter/core/usecases/usecase.dart';
 import 'package:whobird_flutter/domain/entities/audio_chunk.dart';
@@ -18,7 +19,7 @@ class StartRealTimeAnalysis implements UseCase<Stream<List<Classification>>, NoP
   });
 
   @override
-  Future<Stream<List<Classification>>> call(NoParams params) async* {
+  Future<Stream<List<Classification>>> call(NoParams params) async {
     final bool permissionsGranted = await permissionRepository.requestPermissions();
     if (!permissionsGranted) {
       // If permissions are not granted, we can throw a specific failure
@@ -27,8 +28,16 @@ class StartRealTimeAnalysis implements UseCase<Stream<List<Classification>>, NoP
     }
 
     await audioRepository.startRecording();
-    yield* audioRepository.audioStream.asyncExpand((audioChunk) {
+    final stream = audioRepository.audioStream.asyncExpand((audioChunk) {
       return Stream.fromFuture(classificationRepository.classifyAudio(audioChunk));
     });
+    stream.listen((classification) {
+      print(classification);
+    });
+    stream.handleError((error) {
+      print("Error in analysis stream: $error");
+    });
+    return stream;
   }
+
 }

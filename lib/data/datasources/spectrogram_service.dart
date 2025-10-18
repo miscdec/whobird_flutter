@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:scidart/numdart.dart';
+import 'package:scidart/numdart.dart' as scidart;
 import 'package:scidart/scidart.dart' as scidart;
 import 'package:whobird_flutter/domain/entities/audio_chunk.dart';
 
@@ -28,7 +30,7 @@ class SpectrogramServiceImpl implements SpectrogramService {
     // For now, we will assume the STFT produces the correct number of frames.
 
     final stft = _stft(samples, nFft, hopLength);
-    final powerSpec = stft.map((fft) => fft.map((c) => c.abs() * c.abs()).toList()).toList();
+    final powerSpec = stft.map((fft) => fft.map((c) => complexAbs(c) * complexAbs(c)).toList()).toList();
     final melFilters = _createMelFilterBank(nFft, sampleRate, nMel);
 
     final melSpectrogram = powerSpec.map((frame) {
@@ -74,7 +76,7 @@ class SpectrogramServiceImpl implements SpectrogramService {
 
     List<double> melPoints = List.generate(nMel + 2, (i) => melMin + i * (melMax - melMin) / (nMel + 1));
     List<double> hzPoints = melPoints.map((mel) => 700.0 * (exp(mel / 1127.0) - 1.0)).toList();
-    List<int> binPoints = hzPoints.map((hz) => (nFft / 2 + 1) * hz / fMax).floor().toList();
+    List<int> binPoints = hzPoints.map((hz) => ((nFft / 2 + 1) * hz / fMax).floor()).toList();
 
     List<List<double>> filters = List.generate(nMel, (i) => List<double>.filled(nFft ~/ 2 + 1, 0.0));
 
@@ -97,9 +99,13 @@ class SpectrogramServiceImpl implements SpectrogramService {
       final chunk = samples.sublist(i, i + nFft);
       final windowedChunk = List<double>.generate(nFft, (j) => chunk[j] * window[j]);
 
-      final fft = scidart.fft(scidart.Array(windowedChunk));
+      // Convert Array to ArrayComplex by setting imaginary parts to zero
+      final complexArray = scidart.ArrayComplex(
+          windowedChunk.map((e) => scidart.Complex(real: e, imaginary: 0.0)).toList(),);
+
+      final fft = scidart.fft(complexArray);
       final halfLength = (fft.length / 2).ceil();
-      spectra.add(fft.sublist(0, halfLength));
+      spectra.add(scidart.ArrayComplex(fft.sublist(0, halfLength)));
     }
     return spectra;
   }

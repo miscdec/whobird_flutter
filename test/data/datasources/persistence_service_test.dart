@@ -16,7 +16,7 @@ void main() {
     await database.close();
   });
 
-  final testObservation = domain.BirdObservation(
+  final testObservation = BirdObservation(
     id: '1',
     commonName: 'House Sparrow',
     scientificName: 'Passer domesticus',

@@ -4,17 +4,25 @@ import 'package:mocktail/mocktail.dart';
 import 'package:whobird_flutter/core/usecases/usecase.dart';
 import 'package:whobird_flutter/domain/entities/classification.dart';
 import 'package:whobird_flutter/domain/usecases/start_real_time_analysis.dart';
+import 'package:whobird_flutter/domain/usecases/stop_real_time_analysis.dart';
 import 'package:whobird_flutter/presentation/bloc/analysis/analysis_bloc.dart';
 
 class MockStartRealTimeAnalysis extends Mock implements StartRealTimeAnalysis {}
 
+class MockStopRealTimeAnalysis extends Mock implements StopRealTimeAnalysis {}
+
 void main() {
   late AnalysisBloc bloc;
   late MockStartRealTimeAnalysis mockStartRealTimeAnalysis;
+  late MockStopRealTimeAnalysis mockStopRealTimeAnalysis;
 
   setUp(() {
     mockStartRealTimeAnalysis = MockStartRealTimeAnalysis();
-    bloc = AnalysisBloc(startRealTimeAnalysis: mockStartRealTimeAnalysis);
+    mockStopRealTimeAnalysis = MockStopRealTimeAnalysis();
+    bloc = AnalysisBloc(
+        startRealTimeAnalysis: mockStartRealTimeAnalysis,
+        stopRealTimeAnalysis: mockStopRealTimeAnalysis
+    );
   });
 
   tearDown(() {

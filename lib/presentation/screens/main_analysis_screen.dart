@@ -54,7 +54,11 @@ class MainAnalysisScreen extends StatelessWidget {
               ),
             );
           }
-          return Container(); // Should not happen
+          return Container(
+            child: Center(
+              child: Text('Something went wrong: unknown state ${state.runtimeType}'),
+            ),
+          ); // Should not happen
         },
       ),
     );
@@ -65,6 +69,7 @@ class MainAnalysisScreen extends StatelessWidget {
       onPressed: () {
         final bloc = context.read<AnalysisBloc>();
         if (isRecording) {
+
           bloc.add(StopAnalysis());
         } else {
           bloc.add(StartAnalysis());

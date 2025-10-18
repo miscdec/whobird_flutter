@@ -83,6 +83,7 @@ class TfLiteService implements MLService {
       }
 
       results.sort((a, b) => b.score.compareTo(a.score));
+      // print("Results: $results");
       return results;
     } catch (e) {
       print("Failed to run inference: $e");

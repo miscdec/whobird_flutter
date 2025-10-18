@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'dart:typed_data';
-import 'package:fft/fft.dart';
+import 'package:scidart/scidart.dart' as scidart;
 import 'package:whobird_flutter/domain/entities/audio_chunk.dart';
 
 /// Abstract interface for a service that processes audio into spectrograms.
@@ -18,21 +18,15 @@ class SpectrogramServiceImpl implements SpectrogramService {
 
   @override
   Float32List createSpectrogram(AudioChunk audioChunk) {
-    // 1. Normalize and downsample if necessary (assuming input is already correct for now)
     final samples = audioChunk.buffer;
-
-    // 2. Create Mel filter bank
     final melFilters = _createMelFilterBank(nFft, sampleRate, nMel);
-
-    // 3. Apply Hanning window and perform STFT
     final stft = _stft(samples, nFft, hopLength);
 
-    // 4. Compute power spectrogram
+    // Correctly calculate power spectrum
     final powerSpec = stft.map((fft) {
       return fft.map((c) => c.abs() * c.abs()).toList();
     }).toList();
 
-    // 5. Apply Mel filter bank
     final melSpectrogram = powerSpec.map((frame) {
       final melFrame = List<double>.filled(nMel, 0.0);
       for (int i = 0; i < nMel; i++) {
@@ -45,17 +39,14 @@ class SpectrogramServiceImpl implements SpectrogramService {
       return melFrame;
     }).toList();
 
-    // 6. Log-scale and flatten
     final logMelSpectrogram = melSpectrogram.map((frame) {
       return frame.map((val) => log(val + 1e-6)).toList();
     }).toList();
 
-    // Flatten the 2D list into a 1D list for the model
     final flattened = logMelSpectrogram.expand((row) => row).toList();
     return Float32List.fromList(flattened);
   }
 
-  /// Creates a bank of Mel-scaled filters.
   List<List<double>> _createMelFilterBank(int nFft, int sampleRate, int nMel) {
     double fMin = 0.0;
     double fMax = sampleRate / 2.0;
@@ -79,22 +70,22 @@ class SpectrogramServiceImpl implements SpectrogramService {
     return filters;
   }
 
-  /// Performs Short-Time Fourier Transform.
-  List<List<Complex>> _stft(Float32List samples, int nFft, int hopLength) {
-    final List<List<Complex>> spectra = [];
+  /// Performs Short-Time Fourier Transform using scidart.
+  List<scidart.ArrayComplex> _stft(Float32List samples, int nFft, int hopLength) {
+    final List<scidart.ArrayComplex> spectra = [];
     final window = _hanningWindow(nFft);
 
     for (int i = 0; i + nFft <= samples.length; i += hopLength) {
       final chunk = samples.sublist(i, i + nFft);
       final windowedChunk = List<double>.generate(nFft, (j) => chunk[j] * window[j]);
 
-      final fft = FFT().Transform(windowedChunk);
-      spectra.add(fft.sublist(0, nFft ~/ 2 + 1));
+      final fft = scidart.fft(scidart.Array(windowedChunk));
+      final halfLength = (fft.length / 2).ceil();
+      spectra.add(fft.sublist(0, halfLength));
     }
     return spectra;
   }
 
-  /// Generates a Hanning window.
   List<double> _hanningWindow(int length) {
     return List.generate(length, (i) => 0.5 * (1 - cos(2 * pi * i / (length - 1))));
   }

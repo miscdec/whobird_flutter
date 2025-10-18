@@ -10,6 +10,7 @@ class ClassificationRepositoryImpl implements ClassificationRepository {
   final MLService mlService;
   final LocationService locationService;
   final SpectrogramService spectrogramService;
+  Map<String, int>? _labelIndexMap;
 
   ClassificationRepositoryImpl({
     required this.mlService,
@@ -20,22 +21,46 @@ class ClassificationRepositoryImpl implements ClassificationRepository {
   @override
   Future<List<Classification>> classifyAudio(AudioChunk audioChunk) async {
     try {
-      // 1. Convert raw audio to a spectrogram.
       final spectrogram = spectrogramService.createSpectrogram(audioChunk);
+      final resultsFuture = mlService.runInference(spectrogram);
+      final locationFuture = locationService.getCurrentLocation();
 
-      // 2. Get location (can be done in parallel).
-      final location = await locationService.getCurrentLocation();
+      final mainResults = await resultsFuture;
+      final location = await locationFuture;
 
-      // 3. Run main inference on the spectrogram.
-      final mainResults = await mlService.runInference(spectrogram);
+      final now = DateTime.now();
+      final weekOfYear = ((now.difference(DateTime(now.year, 1, 1)).inDays) / 7).ceil();
 
-      // 4. Placeholder for meta-model logic.
-      // In a real implementation, you would run the meta-model here
-      // using the location data and combine the results with mainResults.
-      return mainResults;
+      final metaScores = await mlService.runMetaInference(
+        location: location,
+        weekOfYear: weekOfYear,
+      );
+
+      final List<Classification> finalResults = [];
+      for (final result in mainResults) {
+        final labelIndex = _getLabelIndex(result.label);
+        if (labelIndex != -1) {
+          final metaScore = metaScores[labelIndex];
+          final finalScore = (result.score * 0.5) + (metaScore * 0.5);
+
+          if (finalScore > 0.1) {
+             finalResults.add(Classification(label: result.label, score: finalScore));
+          }
+        }
+      }
+
+      finalResults.sort((a, b) => b.score.compareTo(a.score));
+      return finalResults;
 
     } catch (e) {
       throw ServerFailure(message: 'Classification pipeline failed: $e');
     }
+  }
+
+  int _getLabelIndex(String label) {
+    _labelIndexMap ??= {
+        for (var i = 0; i < mlService.labels.length; i++) mlService.labels[i]: i
+      };
+    return _labelIndexMap![label] ?? -1;
   }
 }

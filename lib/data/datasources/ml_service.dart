@@ -5,12 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:whobird_flutter/core/constants/constants.dart';
+import 'package:whobird_flutter/core/error/failures.dart';
 import 'package:whobird_flutter/domain/entities/classification.dart';
+import 'package:whobird_flutter/data/datasources/location_service.dart';
 
 /// Abstract interface for a machine learning inference service.
 abstract class MLService {
-  /// Runs inference on a pre-processed [spectrogram].
+  List<String> get labels;
   Future<List<Classification>> runInference(Float32List spectrogram);
+  Future<List<double>> runMetaInference({required Location location, required int weekOfYear});
   Future<void> loadModels();
 }
 
@@ -19,6 +22,9 @@ class TfLiteService implements MLService {
   Interpreter? _interpreter;
   Interpreter? _metaInterpreter;
   List<String> _labels = [];
+
+  @override
+  List<String> get labels => _labels;
 
   Future<String> get _localPath async {
     final directory = await getApplicationDocumentsDirectory();
@@ -34,7 +40,7 @@ class TfLiteService implements MLService {
       await _loadLabels();
     } catch (e) {
       print("Failed to load models: $e");
-      rethrow;
+      throw ModelLoadFailure(message: "Failed to load models: $e");
     }
   }
 
@@ -50,12 +56,18 @@ class TfLiteService implements MLService {
       await loadModels();
     }
 
+    // The model expects a 4D tensor: [1, height, width, 1]
+    // The spectrogram service provides a 1D list representing a 2D spectrogram.
+    // We need to know the height and width to reshape it correctly.
+    // Assuming height ~298, width 128 from common BirdNET implementations.
+    // This is a critical point that must match the spectrogram service output.
+    final height = spectrogram.length ~/ 128;
+    final width = 128;
+    final input = spectrogram.reshape([1, height, width, 1]);
+
     final outputShape = [1, _labels.length];
     final output = List.filled(outputShape.reduce((a, b) => a * b), 0.0)
         .reshape(outputShape);
-
-    // The input is now the spectrogram
-    final input = spectrogram.reshape([1, spectrogram.length]);
 
     try {
       _interpreter!.run(input, output);
@@ -74,6 +86,28 @@ class TfLiteService implements MLService {
       return results;
     } catch (e) {
       print("Failed to run inference: $e");
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<double>> runMetaInference({required Location location, required int weekOfYear}) async {
+    if (_metaInterpreter == null) {
+      await loadModels();
+    }
+
+    final weekMeta = cos(2 * pi * weekOfYear / 52.0);
+    final input = [location.latitude, location.longitude, weekMeta];
+
+    final outputShape = [1, _labels.length];
+    final output = List.filled(outputShape.reduce((a, b) => a * b), 0.0)
+        .reshape(outputShape);
+
+    try {
+      _metaInterpreter!.run(input, output);
+      return output[0] as List<double>;
+    } catch (e) {
+      print("Failed to run meta inference: $e");
       rethrow;
     }
   }

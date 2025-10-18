@@ -4,21 +4,25 @@ import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
+import 'package:whobird_flutter/core/error/failures.dart';
 import 'package:whobird_flutter/core/usecases/usecase.dart';
 import 'package:whobird_flutter/domain/entities/classification.dart';
 import 'package:whobird_flutter/domain/usecases/start_real_time_analysis.dart';
+import 'package:whobird_flutter/domain/usecases/stop_real_time_analysis.dart';
 
 part 'analysis_event.dart';
 part 'analysis_state.dart';
 
 class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
   final StartRealTimeAnalysis startRealTimeAnalysis;
-  StreamSubscription<List<Classification>>? _analysisSubscription;
+  final StopRealTimeAnalysis stopRealTimeAnalysis;
 
-  AnalysisBloc({required this.startRealTimeAnalysis}) : super(AnalysisInitial()) {
+  AnalysisBloc({
+    required this.startRealTimeAnalysis,
+    required this.stopRealTimeAnalysis,
+  }) : super(AnalysisInitial()) {
     on<StartAnalysis>(_onStartAnalysis, transformer: restartable());
     on<StopAnalysis>(_onStopAnalysis);
-    on<_NewDetectionsReceived>(_onNewDetectionsReceived);
   }
 
   Future<void> _onStartAnalysis(
@@ -28,13 +32,20 @@ class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
     emit(const AnalysisInProgress([]));
     try {
       final stream = await startRealTimeAnalysis(NoParams());
-      await emit.forEach(
+      await emit.forEach<List<Classification>>(
         stream,
-        onData: (List<Classification> detections) => AnalysisInProgress(detections),
-        onError: (error, stackTrace) => AnalysisFailure(error.toString()),
+        onData: (detections) => AnalysisInProgress(detections),
+        onError: (error, stackTrace) {
+          if (error is PermissionFailure) {
+            return AnalysisFailure("Permissions not granted. Please grant microphone and location permissions.");
+          }
+          return AnalysisFailure(error.toString());
+        },
       );
-    } catch (error) {
-      emit(AnalysisFailure(error.toString()));
+    } on PermissionFailure catch (e) {
+      emit(AnalysisFailure(e.message));
+    } catch (e) {
+      emit(AnalysisFailure("An unexpected error occurred: ${e.toString()}"));
     }
   }
 
@@ -42,19 +53,11 @@ class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
     StopAnalysis event,
     Emitter<AnalysisState> emit,
   ) async {
-    // The restartable transformer handles cancelling the previous stream,
-    // but we can also manually stop it if needed.
-    // For now, simply emitting a paused state is enough.
-    emit(AnalysisPaused());
-  }
-
-  void _onNewDetectionsReceived(
-    _NewDetectionsReceived event,
-    Emitter<AnalysisState> emit,
-  ) {
-    // This event is now handled by emit.forEach, but we can keep it
-    // for other purposes or remove it if it's no longer needed.
-    // For clarity, we will rely on emit.forEach and this event can be removed later.
-    emit(AnalysisInProgress(event.detections));
+    try {
+      await stopRealTimeAnalysis(NoParams());
+      emit(AnalysisPaused());
+    } catch (e) {
+      emit(AnalysisFailure("Failed to stop analysis: ${e.toString()}"));
+    }
   }
 }

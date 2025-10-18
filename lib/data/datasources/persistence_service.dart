@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart';
-// import 'package:drift/native.dart'; // Will be used after code generation
-// import 'package:path_provider/path_provider.dart'; // Will be used after code generation
-// import 'package:path/path.dart' as p; // Will be used after code generation
-import 'package:whobird_flutter/domain/entities/bird_observation.dart';
+import 'package:drift/native.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:whobird_flutter/domain/entities/bird_observation.dart' as domain;
 
-// This file requires code generation. Run `flutter pub run build_runner build`
-// part 'persistence_service.g.dart'; // Add this line after first build
+part 'persistence_service.g.dart';
 
 // --- 1. Define Table Structure ---
+@DataClassName('BirdObservation')
 class BirdObservations extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get commonName => text()();
@@ -20,55 +20,68 @@ class BirdObservations extends Table {
   DateTimeColumn get timestamp => dateTime()();
 }
 
-// --- 2. Define AppDatabase Class (Commented out until code generation) ---
-// @DriftDatabase(tables: [BirdObservations])
-// class AppDatabase extends _$AppDatabase {
-//   AppDatabase() : super(_openConnection());
-//
-//   @override
-//   int get schemaVersion => 1;
-// }
-//
-// LazyDatabase _openConnection() {
-//   return LazyDatabase(() async {
-//     final dbFolder = await getApplicationDocumentsDirectory();
-//     final file = File(p.join(dbFolder.path, 'db.sqlite'));
-//     return NativeDatabase.createInBackground(file);
-//   });
-// }
+// --- 2. Define AppDatabase Class ---
+@DriftDatabase(tables: [BirdObservations])
+class AppDatabase extends _$AppDatabase {
+  AppDatabase() : super(_openConnection());
 
+  @override
+  int get schemaVersion => 1;
+}
+
+LazyDatabase _openConnection() {
+  return LazyDatabase(() async {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dbFolder.path, 'db.sqlite'));
+    return NativeDatabase.createInBackground(file);
+  });
+}
 
 // --- 3. Define PersistenceService Interface ---
 abstract class PersistenceService {
-  Future<void> saveObservation(BirdObservation observation);
-  Future<List<BirdObservation>> getObservations();
+  Future<void> saveObservation(domain.BirdObservation observation);
+  Future<List<domain.BirdObservation>> getObservations();
   Future<void> clearHistory();
 }
 
-
-// --- 4. Define DriftPersistenceService Implementation (Commented out until code generation) ---
+// --- 4. Define DriftPersistenceService Implementation ---
 class DriftPersistenceService implements PersistenceService {
-  // final AppDatabase database; // Will be used after code generation
-  // DriftPersistenceService({required this.database});
+  final AppDatabase database;
+
+  DriftPersistenceService({required this.database});
 
   @override
-  Future<void> saveObservation(BirdObservation observation) async {
-    // Placeholder implementation
-    print('Saving observation: ${observation.commonName}');
-    return Future.value();
+  Future<void> saveObservation(domain.BirdObservation observation) {
+    return database.into(database.birdObservations).insert(
+          BirdObservationsCompanion.insert(
+            commonName: observation.commonName,
+            scientificName: observation.scientificName,
+            latitude: observation.latitude,
+            longitude: observation.longitude,
+            confidence: observation.confidence,
+            timestamp: observation.timestamp,
+          ),
+        );
   }
 
   @override
-  Future<List<BirdObservation>> getObservations() async {
-    // Placeholder implementation
-    print('Getting observations');
-    return Future.value([]);
+  Future<List<domain.BirdObservation>> getObservations() async {
+    final results = await database.select(database.birdObservations).get();
+    return results.map((row) {
+      return domain.BirdObservation(
+        id: row.id.toString(),
+        commonName: row.commonName,
+        scientificName: row.scientificName,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        confidence: row.confidence,
+        timestamp: row.timestamp,
+      );
+    }).toList();
   }
 
   @override
-  Future<void> clearHistory() async {
-    // Placeholder implementation
-    print('Clearing history');
-    return Future.value();
+  Future<void> clearHistory() {
+    return database.delete(database.birdObservations).go();
   }
 }

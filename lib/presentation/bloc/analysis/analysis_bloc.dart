@@ -45,7 +45,7 @@ class AnalysisBloc extends Bloc<AnalysisEvent, AnalysisState> {
     } on PermissionFailure catch (e) {
       emit(AnalysisFailure(e.message));
     } catch (e) {
-      emit(AnalysisFailure("An unexpected error occurred: ${e.toString()}"));
+      emit(AnalysisFailure('An unexpected error occurred: ${e.toString()}'));
     }
   }
 

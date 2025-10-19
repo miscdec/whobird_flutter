@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/services.dart';
 
 /// Abstract interface for a service that manages audio focus.
@@ -10,25 +13,34 @@ abstract class AudioFocusService {
 }
 
 class AudioFocusServiceImpl implements AudioFocusService {
-  static const _channel = MethodChannel('com.example.whobird/audio_focus');
+
+  AudioFocusServiceImpl();
+
+  static final audio_session = AudioSession.instance;
 
   @override
   Future<bool> requestAudioFocus() async {
-    try {
-      final bool? result = await _channel.invokeMethod('requestAudioFocus');
-      return result ?? false;
-    } on PlatformException catch (e) {
-      print("Failed to request audio focus: '${e.message}'.");
-      return false;
+    if(Platform.isFuchsia || Platform.isWindows || Platform.isLinux) {
+      return true;
     }
+    audio_session.then( (session) async {
+      await session.configure(const AudioSessionConfiguration.speech());
+      await session.setActive(true,fallbackConfiguration: AudioSessionConfiguration.speech());
+      return true;
+    }).onError((e,stack) {
+      print("Failed to configure audio session: '${e.toString()}'.");
+      return false;
+    });
+    return false;
   }
 
   @override
   Future<void> abandonAudioFocus() async {
-    try {
-      await _channel.invokeMethod('abandonAudioFocus');
-    } on PlatformException catch (e) {
-      print("Failed to abandon audio focus: '${e.message}'.");
+    if(Platform.isFuchsia || Platform.isWindows || Platform.isLinux) {
+      return;
     }
+    audio_session.then( (session) async {
+      await session.setActive(false);
+    });
   }
 }

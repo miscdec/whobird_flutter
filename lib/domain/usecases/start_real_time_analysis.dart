@@ -29,12 +29,21 @@ class StartRealTimeAnalysis implements UseCase<Stream<List<Classification>>, NoP
 
     final bool recordingStarted = await audioRepository.startRecording();
     if (!recordingStarted) {
+      await audioRepository.stopRecording();
       // This could be a specific failure for audio focus.
       throw PermissionFailure(message: 'Could not get audio focus.');
+
     }
 
-    return audioRepository.audioStream.asyncMap((audioChunk) {
-      return classificationRepository.classifyAudio(audioChunk);
-    });
+    try {
+      return audioRepository.audioStream.asyncMap((audioChunk) {
+        return classificationRepository.classifyAudio(audioChunk);
+      });
+    } catch (e) {
+      await audioRepository.stopRecording();
+      // This could be a specific failure for audio focus.
+      throw RecordFailure(message: 'An error occurred during audio processing: ${e.toString()}');
+    }
+
   }
 }

@@ -1,3 +1,4 @@
+import 'package:audio_session/audio_session.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,7 +61,7 @@ Future<void> init() async {
 
   // Data Sources
   sl.registerLazySingleton<MLService>(() => TfLiteService());
-  sl.registerLazySingleton<AudioService>(() => MicStreamAudioService());
+  sl.registerLazySingleton<AudioService>(() => RecordAudioService());
   sl.registerLazySingleton<LocationService>(() => GeolocatorService());
   sl.registerLazySingleton<AudioFocusService>(() => AudioFocusServiceImpl());
   sl.registerLazySingleton<PersistenceService>(() => DriftPersistenceService(database: sl()));

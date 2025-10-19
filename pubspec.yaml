@@ -26,10 +26,14 @@ dependencies:
   # Data
   drift: ^2.11.0
   sqlite3_flutter_libs: ^0.5.15
-  tflite_flutter: ^0.11.0 # Check for latest compatible version
-  mic_stream: ^0.7.3-dev # Check for latest compatible version and null safety
+  tflite_flutter: ^0.11.0 # Check for latest compatible version and null safety
+#  record: ^5.0.4
   geolocator: ^10.1.0
   scidart: ^0.0.2-dev.12
+  record: ^6.1.2
+  audio_session: ^0.2.2
+  geolocator_linux: ^0.2.3
+#  record_platform_interface: ^1.4.0
 
 dev_dependencies:
   flutter_test:

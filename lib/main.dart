@@ -38,6 +38,7 @@ class _AppInitializerState extends State<AppInitializer> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           if (snapshot.hasError) {
+            print('Error: ${snapshot.error.toString()}');
             // Handle setup error: show an error screen
             return MaterialApp(
               home: Scaffold(

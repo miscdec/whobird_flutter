@@ -43,3 +43,12 @@ class PermissionFailure extends Failure {
   @override
   List<Object> get props => [message];
 }
+
+class RecordFailure extends Failure {
+  final String message;
+
+  const RecordFailure({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
